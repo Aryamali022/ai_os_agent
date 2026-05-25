@@ -1,43 +1,67 @@
+import json
+from groq import Groq
 
+SYSTEM_PROMPT = """
+You are an advanced AI OS Agent running on Windows. Your job is to understand the user's request, identify the correct action, and respond helpfully.
+You must always respond in valid JSON format.
+
+Available Actions:
+1. OPEN_APP       - User wants to open an application (e.g., notepad, chrome, calculator).
+2. SEARCH_WEB     - User wants to search something on Google or the internet.
+3. SEARCH_FILE    - User wants to find/locate a file on their local system.
+4. CREATE_FILE    - User wants to create a new file.
+5. READ_FILE      - User wants to read the contents of a file.
+6. WRITE_FILE     - User wants to write or append data to a file.
+7. DELETE_FILE    - User wants to delete or remove a file.
+8. ACCESS_CODE    - User wants to read, summarize, or understand an existing codebase.
+9. DEBUG_CODE     - User wants to debug or fix errors in a script.
+10. WRITE_CODE    - User wants to generate or write new code.
+11. GENERAL       - User is just chatting, asking a general question, or the request doesn't fit any action above.
+
+Your JSON response must have the following structure:
+{
+    "thought": "Your internal reasoning about what the user wants and why you chose this action.",
+    "action": "The action name (must be one of the available actions listed above)",
+    "parameters": "Any relevant parameters extracted from the prompt (e.g., app name, file path, search query). Use empty string if none.",
+    "response": "Your helpful response to the user explaining what you will do or answering their question."
+}
+"""
 
 class AIOsAgent:
-    """Core AI OS Agent that runs the Thought -> Action loop."""
+    """Core AI OS Agent that uses Groq LLM to identify actions and respond."""
     
     def __init__(self):
-        self.history = []
+        self.client = Groq()
+        self.model = "llama-3.3-70b-versatile"
 
-    def think(self, user_input: str) -> str:
+    def chat(self, user_input: str) -> dict:
         """
-        Simulates the agent's thought process (Placeholder for future LLM integration).
-        Returns a string representing the action to take.
+        Sends the user input to the Groq LLM and returns a structured response
+        with the identified action.
         """
-        print(f"[Agent Thinking] Analyzing input: '{user_input}'...")
-        
-        # Simple simulated logic for Phase 1
-        user_input_lower = user_input.lower()
-        if "delete" in user_input_lower or "remove" in user_input_lower:
-            return "ACTION: DELETE_FILE"
-        elif "open" in user_input_lower:
-            return "ACTION: OPEN_APP"
-        else:
-            return "ACTION: RESPOND"
-
-    def act(self, action_str: str, user_input: str):
-        """
-        Executes the action derived from the thought process.
-        Enforces safety constraints where necessary.
-        """
-                
-        if action_str == "ACTION: OPEN_APP":
-            print(f"[Action Output] Opening application... (Simulated based on: '{user_input}')")
+        try:
+            response = self.client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_input}
+                ],
+                model=self.model,
+                response_format={"type": "json_object"},
+                temperature=0.3
+            )
             
-        elif action_str == "ACTION: RESPOND":
-            print(f"[Action Output] Agent Response: I have processed your request '{user_input}'.")
+            response_text = response.choices[0].message.content
+            result = json.loads(response_text)
             
-        else:
-            print(f"[Action Output] Unknown action: {action_str}")
+            if not isinstance(result, dict):
+                return {"thought": "", "action": "GENERAL", "parameters": "", "response": "Something went wrong with the LLM output."}
+            
+            return {
+                "thought": result.get("thought", ""),
+                "action": result.get("action", "GENERAL"),
+                "parameters": result.get("parameters", ""),
+                "response": result.get("response", "")
+            }
 
-    def run_step(self, user_input: str):
-        """Runs a single Thought -> Action loop for the given input."""
-        thought_action = self.think(user_input)
-        self.act(thought_action, user_input)
+        except Exception as e:
+            return {"thought": "", "action": "ERROR", "parameters": "", "response": f"Error: {e}"}
