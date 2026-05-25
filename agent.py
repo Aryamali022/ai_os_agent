@@ -1,5 +1,6 @@
 import json
 from groq import Groq
+from actions import ACTION_REGISTRY
 
 SYSTEM_PROMPT = """
 You are an advanced AI OS Agent running on Windows. Your job is to understand the user's request, identify the correct action, and respond helpfully.
@@ -28,7 +29,7 @@ Your JSON response must have the following structure:
 """
 
 class AIOsAgent:
-    """Core AI OS Agent that uses Groq LLM to identify actions and respond."""
+    """Core AI OS Agent that uses Groq LLM to identify actions, execute them, and respond."""
     
     def __init__(self):
         self.client = Groq()
@@ -36,8 +37,8 @@ class AIOsAgent:
 
     def chat(self, user_input: str) -> dict:
         """
-        Sends the user input to the Groq LLM and returns a structured response
-        with the identified action.
+        Sends the user input to the Groq LLM, identifies the action,
+        executes it if a handler exists, and returns the result.
         """
         try:
             response = self.client.chat.completions.create(
@@ -54,14 +55,34 @@ class AIOsAgent:
             result = json.loads(response_text)
             
             if not isinstance(result, dict):
-                return {"thought": "", "action": "GENERAL", "parameters": "", "response": "Something went wrong with the LLM output."}
+                return {"thought": "", "action": "GENERAL", "parameters": "", "response": "Something went wrong with the LLM output.", "action_result": ""}
+            
+            action = result.get("action", "GENERAL")
+            parameters = result.get("parameters", "")
+            
+            # Execute the action if a handler is registered
+            action_result = self.execute_action(action, parameters)
             
             return {
                 "thought": result.get("thought", ""),
-                "action": result.get("action", "GENERAL"),
-                "parameters": result.get("parameters", ""),
-                "response": result.get("response", "")
+                "action": action,
+                "parameters": parameters,
+                "response": result.get("response", ""),
+                "action_result": action_result
             }
 
         except Exception as e:
-            return {"thought": "", "action": "ERROR", "parameters": "", "response": f"Error: {e}"}
+            return {"thought": "", "action": "ERROR", "parameters": "", "response": f"Error: {e}", "action_result": ""}
+
+    def execute_action(self, action: str, parameters: str) -> str:
+        """
+        Looks up the action in the ACTION_REGISTRY and executes it.
+        Returns the execution result or a message if no handler is found.
+        """
+        handler = ACTION_REGISTRY.get(action)
+        
+        if handler:
+            return handler(parameters)
+        
+        return ""
+

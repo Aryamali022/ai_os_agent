@@ -29,6 +29,7 @@ class ChatResponse(BaseModel):
     action: str
     parameters: str
     response: str
+    action_result: str
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest):
