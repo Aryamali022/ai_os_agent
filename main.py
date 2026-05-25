@@ -1,5 +1,6 @@
 import os
 import sys
+from typing import List
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -24,18 +25,22 @@ agent = AIOsAgent()
 class ChatRequest(BaseModel):
     message: str
 
-class ChatResponse(BaseModel):
-    thought: str
+class TaskResult(BaseModel):
     action: str
     parameters: str
-    response: str
     action_result: str
+
+class ChatResponse(BaseModel):
+    thought: str
+    tasks: List[TaskResult]
+    response: str
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest):
     """
     Send a message to the AI OS Agent and get a response.
-    Example body: {"message": "hello, what can you do?"}
+    Supports multiple tasks in a single message.
+    Example body: {"message": "open notepad and calculator"}
     """
     try:
         result = agent.chat(request.message)

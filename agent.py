@@ -1,9 +1,11 @@
 import json
+import time
 from groq import Groq
 from actions import ACTION_REGISTRY
 
 SYSTEM_PROMPT = """
-You are an advanced AI OS Agent running on Windows. Your job is to understand the user's request, identify the correct action, and respond helpfully.
+You are an advanced AI OS Agent running on Windows. Your job is to understand the user's request, identify ALL the actions needed, and respond helpfully.
+A user may request multiple tasks in a single message. You must identify each task separately.
 You must always respond in valid JSON format.
 
 Available Actions:
@@ -21,15 +23,24 @@ Available Actions:
 
 Your JSON response must have the following structure:
 {
-    "thought": "Your internal reasoning about what the user wants and why you chose this action.",
-    "action": "The action name (must be one of the available actions listed above)",
-    "parameters": "Any relevant parameters extracted from the prompt (e.g., app name, file path, search query). Use empty string if none.",
-    "response": "Your helpful response to the user explaining what you will do or answering their question."
+    "thought": "Your overall reasoning about the user's request.",
+    "tasks": [
+        {
+            "action": "The action name (must be one of the available actions)",
+            "parameters": "Relevant parameters for this specific task (e.g., app name, file path). Use empty string if none."
+        }
+    ],
+    "response": "Your helpful response to the user explaining what you will do."
 }
+
+IMPORTANT RULES:
+- If the user asks for multiple things (e.g., "open notepad and calculator"), return multiple items in the "tasks" array.
+- If the user asks for only one thing, return a single item in the "tasks" array.
+- Always return at least one task.
 """
 
 class AIOsAgent:
-    """Core AI OS Agent that uses Groq LLM to identify actions, execute them, and respond."""
+    """Core AI OS Agent that uses Groq LLM to identify and execute multiple tasks."""
     
     def __init__(self):
         self.client = Groq()
@@ -37,8 +48,8 @@ class AIOsAgent:
 
     def chat(self, user_input: str) -> dict:
         """
-        Sends the user input to the Groq LLM, identifies the action,
-        executes it if a handler exists, and returns the result.
+        Sends the user input to the Groq LLM, identifies all tasks,
+        executes each one, and returns the combined result.
         """
         try:
             response = self.client.chat.completions.create(
@@ -55,29 +66,44 @@ class AIOsAgent:
             result = json.loads(response_text)
             
             if not isinstance(result, dict):
-                return {"thought": "", "action": "GENERAL", "parameters": "", "response": "Something went wrong with the LLM output.", "action_result": ""}
+                return {
+                    "thought": "",
+                    "tasks": [{"action": "GENERAL", "parameters": "", "action_result": ""}],
+                    "response": "Something went wrong with the LLM output."
+                }
             
-            action = result.get("action", "GENERAL")
-            parameters = result.get("parameters", "")
+            tasks = result.get("tasks", [])
             
-            # Execute the action if a handler is registered
-            action_result = self.execute_action(action, parameters)
+            # Execute each task and attach the result
+            executed_tasks = []
+            for task in tasks:
+                action = task.get("action", "GENERAL")
+                parameters = task.get("parameters", "")
+                action_result = self.execute_action(action, parameters)
+                executed_tasks.append({
+                    "action": action,
+                    "parameters": parameters,
+                    "action_result": action_result
+                })
+                time.sleep(2)
             
             return {
                 "thought": result.get("thought", ""),
-                "action": action,
-                "parameters": parameters,
-                "response": result.get("response", ""),
-                "action_result": action_result
+                "tasks": executed_tasks,
+                "response": result.get("response", "")
             }
 
         except Exception as e:
-            return {"thought": "", "action": "ERROR", "parameters": "", "response": f"Error: {e}", "action_result": ""}
+            return {
+                "thought": "",
+                "tasks": [{"action": "ERROR", "parameters": "", "action_result": str(e)}],
+                "response": f"Error: {e}"
+            }
 
     def execute_action(self, action: str, parameters: str) -> str:
         """
         Looks up the action in the ACTION_REGISTRY and executes it.
-        Returns the execution result or a message if no handler is found.
+        Returns the execution result or empty string if no handler is found.
         """
         handler = ACTION_REGISTRY.get(action)
         
@@ -85,4 +111,3 @@ class AIOsAgent:
             return handler(parameters)
         
         return ""
-
