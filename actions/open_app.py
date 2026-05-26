@@ -1,11 +1,13 @@
 import time
 import pyautogui
+from actions.validator import validate_app_opened
 
 
 def open_app(app_name: str) -> str:
     """
     Opens a Windows application using keyboard automation.
     Simulates: Press Win key -> Type app name -> Press Enter.
+    Then validates whether the app actually opened.
 
     Args:
         app_name: The name of the application to open.
@@ -27,7 +29,15 @@ def open_app(app_name: str) -> str:
 
         # Press Enter to launch the top result
         pyautogui.press("enter")
+        time.sleep(1)
 
-        return f"Successfully launched '{app_name}'."
+        # Validate if the app actually opened
+        result = validate_app_opened(app_name)
+
+        if result["is_open"]:
+            return f"Successfully launched '{app_name}'. Window found: '{result['window_title']}'."
+        else:
+            return f"Attempted to launch '{app_name}', but could not confirm it opened."
+
     except Exception as e:
         return f"Failed to open '{app_name}': {e}"
