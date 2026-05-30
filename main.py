@@ -1,7 +1,10 @@
 import os
 import sys
-from typing import List
+from typing import List, Optional, Dict, Any
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from agent import AIOsAgent
@@ -20,7 +23,19 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Allow frontend on any port (e.g. Live Server) to call the API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Initialize agent once at startup
 agent = AIOsAgent()
+
+# --- Pydantic Models ---
 
 class ChatRequest(BaseModel):
     message: str
@@ -35,18 +50,33 @@ class ChatResponse(BaseModel):
     tasks: List[TaskResult]
     response: str
 
+# --- API Routes (defined BEFORE static mount) ---
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest):
     """
     Send a message to the AI OS Agent and get a response.
     Supports multiple tasks in a single message.
-    Example body: {"message": "open notepad and calculator"}
     """
     try:
         result = agent.chat(request.message)
         return ChatResponse(**result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {"status": "ok", "agent": "online"}
+
+
+@app.get("/")
+async def serve_frontend():
+    """Serve the frontend chat interface."""
+    return FileResponse("static/index.html")
+
+# Mount static files at /static for CSS, JS, images etc.
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 if __name__ == "__main__":
     import uvicorn

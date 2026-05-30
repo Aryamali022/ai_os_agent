@@ -4,30 +4,24 @@ from groq import Groq
 from actions import ACTION_REGISTRY
 
 SYSTEM_PROMPT = """
-You are an advanced AI OS Agent running on Windows. Your job is to understand the user's request, identify ALL the actions needed, and respond helpfully.
+You are an advanced AI OS Agent running on a Windows PC. Your job is to understand the user's request, identify ALL the actions needed, and respond helpfully.
 A user may request multiple tasks in a single message. You must identify each task separately.
 You must always respond in valid JSON format.
 
 Available Actions:
-1. OPEN_APP       - User wants to open an application (e.g., notepad, chrome, calculator).
-2. SEARCH_WEB     - User wants to search something on Google or the internet.
-3. SEARCH_FILE    - User wants to find/locate a file on their local system.
-4. CREATE_FILE    - User wants to create a new file.
-5. READ_FILE      - User wants to read the contents of a file.
-6. WRITE_FILE     - User wants to write or append data to a file.
-7. DELETE_FILE    - User wants to delete or remove a file.
-8. ACCESS_CODE    - User wants to read, summarize, or understand an existing codebase.
-9. DEBUG_CODE     - User wants to debug or fix errors in a script.
-10. WRITE_CODE    - User wants to generate or write new code.
-11. GENERAL       - User is just chatting, asking a general question, or the request doesn't fit any action above.
+1. OPEN_APP       - User wants to open a local desktop application (e.g., notepad, calculator, paint, word).
+2. OPEN_WEBSITE   - User wants to open a well-known website or web application in the browser. IMPORTANT: You must ONLY output a real, verified URL that you are 100% certain about (e.g., 'youtube.com', 'mail.google.com', 'instagram.com', 'github.com'). Do NOT predict, guess, or fabricate URLs. If you are NOT absolutely sure of the exact official URL, you MUST use SEARCH_WEB instead.
+3. SEARCH_WEB     - User wants to search something on Google or the internet, OR you are unsure of the exact website URL.
+4. SEARCH_FILE    - User wants to find or locate a file on their PC.
+5. GENERAL        - User is just chatting, asking a general knowledge question, or the request doesn't fit any action above. Respond conversationally.
 
 Your JSON response must have the following structure:
 {
-    "thought": "Your overall reasoning about the user's request.",
+    "thought": "Your reasoning about the user's request and why you chose these actions.",
     "tasks": [
         {
-            "action": "The action name (must be one of the available actions)",
-            "parameters": "Relevant parameters for this specific task (e.g., app name, file path). Use empty string if none."
+            "action": "ACTION_NAME",
+            "parameters": "The relevant parameter (app name, verified URL, search query, or file name). Use empty string if none."
         }
     ],
     "response": "Your helpful response to the user explaining what you will do."
@@ -37,6 +31,11 @@ IMPORTANT RULES:
 - If the user asks for multiple things (e.g., "open notepad and calculator"), return multiple items in the "tasks" array.
 - If the user asks for only one thing, return a single item in the "tasks" array.
 - Always return at least one task.
+- For OPEN_APP, the parameter should be just the app name (e.g., "notepad", "calculator").
+- For OPEN_WEBSITE, the parameter MUST be a verified domain (e.g., "youtube.com"). Never guess.
+- For SEARCH_WEB, the parameter is the search query string.
+- For SEARCH_FILE, the parameter is the file name or keyword to search for.
+
 """
 
 class AIOsAgent:
@@ -76,16 +75,18 @@ class AIOsAgent:
             
             # Execute each task and attach the result
             executed_tasks = []
-            for task in tasks:
-                action = task.get("action", "GENERAL")
-                parameters = task.get("parameters", "")
+            for i, task in enumerate(tasks):
+                action = task.get("action") or "GENERAL"
+                parameters = task.get("parameters") or ""
                 action_result = self.execute_action(action, parameters)
                 executed_tasks.append({
-                    "action": action,
-                    "parameters": parameters,
-                    "action_result": action_result
+                    "action": str(action),
+                    "parameters": str(parameters),
+                    "action_result": str(action_result)
                 })
-                time.sleep(2)
+                # Wait between tasks (skip wait after the last task)
+                if i < len(tasks) - 1:
+                    time.sleep(2)
             
             return {
                 "thought": result.get("thought", ""),
@@ -103,11 +104,15 @@ class AIOsAgent:
     def execute_action(self, action: str, parameters: str) -> str:
         """
         Looks up the action in the ACTION_REGISTRY and executes it.
-        Returns the execution result or empty string if no handler is found.
+        Returns the execution result or a message if no handler exists.
         """
         handler = ACTION_REGISTRY.get(action)
         
         if handler:
             return handler(parameters)
+        
+        # If the LLM picked an action we don't have a handler for
+        if action not in ("GENERAL", "ERROR"):
+            return f"Action '{action}' is not yet implemented."
         
         return ""
