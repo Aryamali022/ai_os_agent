@@ -70,13 +70,13 @@ def _ocr_screen() -> str:
 
 async def _perform_ocr_async(image_path: str) -> str:
     """
-    Uses the built-in Windows 10/11 OCR engine via winsdk.
+    Uses the built-in Windows 10/11 OCR engine via winrt.
     Returns extracted text in lowercase.
     """
-    from winsdk.windows.media.ocr import OcrEngine
-    from winsdk.windows.globalization import Language
-    from winsdk.windows.graphics.imaging import BitmapDecoder
-    from winsdk.windows.storage import StorageFile
+    from winrt.windows.media.ocr import OcrEngine
+    from winrt.windows.globalization import Language
+    from winrt.windows.graphics.imaging import BitmapDecoder
+    from winrt.windows.storage import StorageFile
 
     abs_path = os.path.abspath(image_path)
 

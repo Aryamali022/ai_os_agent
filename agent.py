@@ -1,6 +1,7 @@
+import os
 import json
-import time
-from groq import Groq
+import re
+from openai import OpenAI
 from actions import ACTION_REGISTRY
 
 SYSTEM_PROMPT = """
@@ -39,29 +40,52 @@ IMPORTANT RULES:
 """
 
 class AIOsAgent:
-    """Core AI OS Agent that uses Groq LLM to identify and execute multiple tasks."""
+    """Core AI OS Agent that uses Nvidia LLM to identify and execute multiple tasks."""
     
     def __init__(self):
-        self.client = Groq()
-        self.model = "llama-3.3-70b-versatile"
+        self.client = OpenAI(
+            base_url="https://integrate.api.nvidia.com/v1",
+            api_key=os.environ.get("NVIDIA_API_KEY")
+        )
+        self.model = "nvidia/llama-3.1-nemotron-nano-8b-v1"
 
     def chat(self, user_input: str) -> dict:
         """
-        Sends the user input to the Groq LLM, identifies all tasks,
+        Sends the user input to the Nvidia LLM, identifies all tasks,
         executes each one, and returns the combined result.
         """
         try:
+            print(f"1. Sending request to Nvidia API for: {user_input}")
             response = self.client.chat.completions.create(
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "user", "content": user_input}
                 ],
                 model=self.model,
-                response_format={"type": "json_object"},
-                temperature=0.3
+                temperature=0.6,
+                top_p=0.95,
+                max_tokens=4096
             )
+            print("2. Received response from Nvidia!")
             
             response_text = response.choices[0].message.content
+
+            # Strip markdown code fences if present
+            response_text = response_text.strip()
+            if response_text.startswith("```json"):
+                response_text = response_text[7:]
+            elif response_text.startswith("```"):
+                response_text = response_text[3:]
+            if response_text.endswith("```"):
+                response_text = response_text[:-3]
+            response_text = response_text.strip()
+
+            # If the model added prose around the JSON, extract the JSON object
+            if not response_text.startswith("{"):
+                match = re.search(r'\{.*\}', response_text, re.DOTALL)
+                if match:
+                    response_text = match.group()
+
             result = json.loads(response_text)
             
             if not isinstance(result, dict):
@@ -72,21 +96,23 @@ class AIOsAgent:
                 }
             
             tasks = result.get("tasks", [])
+            print(f"3. Found {len(tasks)} tasks to execute.")
             
             # Execute each task and attach the result
             executed_tasks = []
             for i, task in enumerate(tasks):
                 action = task.get("action") or "GENERAL"
                 parameters = task.get("parameters") or ""
+                
+                print(f" -> Executing action: {action} | Params: {parameters}")
                 action_result = self.execute_action(action, parameters)
+                print(f" -> Finished action: {action}")
+                
                 executed_tasks.append({
                     "action": str(action),
                     "parameters": str(parameters),
                     "action_result": str(action_result)
                 })
-                # Wait between tasks (skip wait after the last task)
-                if i < len(tasks) - 1:
-                    time.sleep(2)
             
             return {
                 "thought": result.get("thought", ""),

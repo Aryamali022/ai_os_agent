@@ -1,6 +1,7 @@
 import os
 import sys
-from typing import List, Optional, Dict, Any
+from pathlib import Path
+from typing import List
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -9,17 +10,20 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 from agent import AIOsAgent
 
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
+
 # Load environment variables
 load_dotenv()
 
-if not os.environ.get("GROQ_API_KEY"):
-    print("[ERROR] GROQ_API_KEY not found in environment variables.")
-    print("Please create a .env file and add your GROQ_API_KEY.")
+if not os.environ.get("NVIDIA_API_KEY"):
+    print("[ERROR] NVIDIA_API_KEY not found in environment variables.")
+    print("Please create a .env file and add your NVIDIA_API_KEY.")
     sys.exit(1)
 
 app = FastAPI(
     title="AI OS Agent API",
-    description="An API to interface with the AI OS Agent using Groq Llama 3.3 70B Versatile model.",
+    description="An API to interface with the AI OS Agent using Nvidia Llama 3.1 Nemotron Nano 8B model.",
     version="1.0.0"
 )
 
@@ -53,10 +57,11 @@ class ChatResponse(BaseModel):
 # --- API Routes (defined BEFORE static mount) ---
 
 @app.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(request: ChatRequest):
+def chat_endpoint(request: ChatRequest):
     """
     Send a message to the AI OS Agent and get a response.
     Supports multiple tasks in a single message.
+    Defined synchronously (def instead of async def) so FastAPI runs it in a background thread automatically.
     """
     try:
         result = agent.chat(request.message)
@@ -73,11 +78,11 @@ async def health_check():
 @app.get("/")
 async def serve_frontend():
     """Serve the frontend chat interface."""
-    return FileResponse("static/index.html")
+    return FileResponse(str(STATIC_DIR / "index.html"))
 
 # Mount static files at /static for CSS, JS, images etc.
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("main:app", host="127.0.0.1", port=5000, reload=True)

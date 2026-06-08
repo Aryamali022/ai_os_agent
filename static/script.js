@@ -4,18 +4,30 @@ const sendBtn = document.getElementById('sendBtn');
 const welcomeMessage = document.querySelector('.welcome-message');
 
 // Always point to the FastAPI backend (works from Live Server or any other host)
-const API_BASE = 'http://127.0.0.1:8000';
+const API_BASE = "http://127.0.0.1:5000";
 
 function sendSuggestion(text) {
     messageInput.value = text;
     messageInput.focus();
-    document.getElementById('chatForm').dispatchEvent(new Event('submit'));
+    document.getElementById('sendBtn').click();
 }
 
 async function handleSubmit(event) {
     event.preventDefault();
     const text = messageInput.value.trim();
     if (!text) return;
+
+    // Cancel any ongoing text-to-speech when a new message is submitted
+    if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        const mic = document.getElementById('micBtn');
+        if (mic) mic.classList.remove('speaking');
+    }
+
+    // Cancel any ongoing speech recognition
+    if (isListening && typeof stopListening === 'function') {
+        stopListening();
+    }
 
     // Remove welcome message if it exists
     if (welcomeMessage && welcomeMessage.parentNode) {
@@ -48,12 +60,17 @@ async function handleSubmit(event) {
         }
 
         const data = await response.json();
-        
+
         // Remove typing indicator
         removeElement(typingId);
 
         // Append Bot Message
         appendBotResponse(data);
+
+        // Read response aloud if TTS is enabled
+        if (typeof ttsEnabled !== 'undefined' && ttsEnabled) {
+            speakText(data.response);
+        }
     } catch (error) {
         console.error('Error:', error);
         removeElement(typingId);
@@ -110,7 +127,7 @@ function appendBotResponse(data) {
 
                 const actionSpan = document.createElement('span');
                 actionSpan.className = 'task-action';
-                actionSpan.textContent = task.action.replace('_', ' ');
+                actionSpan.textContent = task.action.replace(/_/g, ' ');
 
                 const paramSpan = document.createElement('span');
                 paramSpan.className = 'task-params';
@@ -151,7 +168,7 @@ function showTypingIndicator() {
     const indicator = document.createElement('div');
     indicator.id = id;
     indicator.className = 'typing-indicator';
-    
+
     for (let i = 0; i < 3; i++) {
         const dot = document.createElement('div');
         dot.className = 'typing-dot';
@@ -176,4 +193,196 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// ==========================================
+// VOICE COMMAND SYSTEM INTEGRATION
+// ==========================================
+
+const micBtn = document.getElementById('micBtn');
+const ttsToggle = document.getElementById('ttsToggle');
+const autoSendToggle = document.getElementById('autoSendToggle');
+
+let recognition = null;
+let isListening = false;
+let ttsEnabled = false;
+let autoSendEnabled = true;
+let currentUtterance = null;
+
+// Initialize Speech Recognition
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+if (!SpeechRecognition) {
+    console.warn('Speech Recognition not supported in this browser.');
+    if (micBtn) {
+        micBtn.classList.add('disabled');
+        micBtn.title = 'Speech recognition not supported in this browser';
+    }
+} else {
+    recognition = new SpeechRecognition();
+    recognition.continuous = false; // Stop when the user stops speaking
+    recognition.interimResults = true; // Show results as they are transcribed
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+        isListening = true;
+        micBtn.classList.add('listening');
+        micBtn.title = 'Listening... Click to stop';
+        messageInput.placeholder = 'Listening...';
+
+        // Stop any text-to-speech if listening starts
+        if (window.speechSynthesis) {
+            window.speechSynthesis.cancel();
+            micBtn.classList.remove('speaking');
+        }
+    };
+
+    recognition.onresult = (event) => {
+        const transcript = Array.from(event.results)
+            .map(result => result[0].transcript)
+            .join('');
+
+        messageInput.value = transcript;
+    };
+
+    recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        stopListening();
+    };
+
+    recognition.onend = () => {
+        const hasText = messageInput.value.trim().length > 0;
+        stopListening();
+
+        // Auto-submit if enabled and we got some text input
+        if (autoSendEnabled && hasText) {
+            document.getElementById('sendBtn').click();
+        }
+    };
+}
+
+// Toggle functions
+function startListening() {
+    if (!recognition) return;
+    try {
+        recognition.start();
+    } catch (e) {
+        console.error('Failed to start recognition:', e);
+    }
+}
+
+// Stop function
+function stopListening() {
+    isListening = false;
+    if (micBtn) {
+        micBtn.classList.remove('listening');
+        micBtn.title = 'Click to speak';
+    }
+    if (messageInput) {
+        messageInput.placeholder = 'Type your command...';
+    }
+    if (recognition) {
+        try {
+            recognition.stop();
+        } catch (e) { }
+    }
+}
+
+// Text to Speech
+function speakText(text) {
+    if (!window.speechSynthesis) return;
+
+    // Cancel active speaking
+    window.speechSynthesis.cancel();
+    micBtn.classList.remove('speaking');
+
+    // Strip emoji and private-use unicode so TTS doesn't read garbage characters
+    let cleanText = text.replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2600-\u26FF]|\uD83E[\uDD00-\uDDFF]/g, '');
+
+    if (!cleanText.trim()) return;
+
+    currentUtterance = new SpeechSynthesisUtterance(cleanText);
+
+    currentUtterance.onstart = () => {
+        micBtn.classList.add('speaking');
+        micBtn.title = 'Speaking response... Click to stop';
+    };
+
+    currentUtterance.onend = () => {
+        micBtn.classList.remove('speaking');
+        micBtn.title = 'Click to speak';
+    };
+
+    currentUtterance.onerror = () => {
+        micBtn.classList.remove('speaking');
+        micBtn.title = 'Click to speak';
+    };
+
+    window.speechSynthesis.speak(currentUtterance);
+}
+
+// Initialize Voice Settings
+if (ttsToggle && autoSendToggle) {
+    // Restore states from localStorage
+    if (localStorage.getItem('ttsEnabled') === 'true') {
+        ttsEnabled = true;
+        ttsToggle.checked = true;
+    } else {
+        ttsEnabled = false;
+        ttsToggle.checked = false;
+    }
+
+    if (localStorage.getItem('autoSendEnabled') === 'false') {
+        autoSendEnabled = false;
+        autoSendToggle.checked = false;
+    } else {
+        autoSendEnabled = true;
+        autoSendToggle.checked = true;
+    }
+
+    // Settings event listeners
+    ttsToggle.addEventListener('change', (e) => {
+        ttsEnabled = e.target.checked;
+        localStorage.setItem('ttsEnabled', ttsEnabled);
+        if (!ttsEnabled && window.speechSynthesis) {
+            window.speechSynthesis.cancel();
+            micBtn.classList.remove('speaking');
+            micBtn.title = 'Click to speak';
+        }
+    });
+
+    autoSendToggle.addEventListener('change', (e) => {
+        autoSendEnabled = e.target.checked;
+        localStorage.setItem('autoSendEnabled', autoSendEnabled);
+    });
+}
+
+// Mic button event listener
+if (micBtn) {
+    micBtn.addEventListener('click', () => {
+        if (isListening) {
+            stopListening();
+        } else if (micBtn.classList.contains('speaking')) {
+            if (window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+            }
+            micBtn.classList.remove('speaking');
+            micBtn.title = 'Click to speak';
+        } else {
+            startListening();
+        }
+    });
+}
+
+// Cancel speaking if user starts typing in message input
+if (messageInput) {
+    messageInput.addEventListener('input', () => {
+        if (window.speechSynthesis && window.speechSynthesis.speaking) {
+            window.speechSynthesis.cancel();
+            if (micBtn) {
+                micBtn.classList.remove('speaking');
+                micBtn.title = 'Click to speak';
+            }
+        }
+    });
 }

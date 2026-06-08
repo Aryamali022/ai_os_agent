@@ -1,12 +1,11 @@
-import subprocess
-import time
-import pyautogui
+import webbrowser
+from urllib.parse import quote_plus
 
 
 def search_web(query: str) -> str:
     """
-    Searches Google for the given query by opening Edge directly with a Google search URL.
-    This is much more reliable than typing into the browser manually.
+    Searches Google for the given query by opening the default browser with a Google search URL.
+    Uses urllib.parse.quote_plus for proper URL encoding of special characters.
 
     Args:
         query: The search query to look up on Google.
@@ -18,16 +17,13 @@ def search_web(query: str) -> str:
         return "No search query provided."
 
     try:
-        # Build the Google search URL with the query
-        search_url = f"https://www.google.com/search?q={query.strip().replace(' ', '+')}"
+        # Build the Google search URL with properly encoded query
+        encoded_query = quote_plus(query.strip())
+        search_url = f"https://www.google.com/search?q={encoded_query}"
 
-        # Open Edge directly with the search URL
-        subprocess.Popen(["cmd.exe", "/c", "start", "msedge", search_url])
-        time.sleep(2)
+        # Open in default browser safely (no shell injection risk)
+        webbrowser.open(search_url)
 
-        # Make Edge full screen
-        pyautogui.press("f11")
-
-        return f"Searched Google for '{query}' in Microsoft Edge."
+        return f"Searched Google for '{query}' in your browser."
     except Exception as e:
         return f"Failed to search for '{query}': {e}"

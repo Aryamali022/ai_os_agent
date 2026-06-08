@@ -1,15 +1,22 @@
 # Virtual Environment
 venv/
+.venv/
 
 # Environment Variables
 .env
+.env.*
 
 # Python Cache
 __pycache__/
 *.pyc
+*.pyo
 
-# VS Code
+# Temp files created by validator
+_temp_validator_screenshot.png
+
+# IDE
 .vscode/
+.idea/
 
 # OS Files
 .DS_Store

@@ -1,12 +1,10 @@
-import subprocess
-import time
-import pyautogui
+import webbrowser
 
 
 def open_website(url: str) -> str:
     """
-    Opens a website URL directly in Microsoft Edge using the command line.
-    This is more reliable than keyboard automation for URL navigation.
+    Opens a website URL in the user's default browser safely.
+    Uses webbrowser.open() to avoid shell injection risks.
 
     Args:
         url: The website URL to open (e.g., 'youtube.com').
@@ -27,13 +25,9 @@ def open_website(url: str) -> str:
         url = "https://" + url
 
     try:
-        # Open Edge directly with the URL via command line (most reliable method)
-        subprocess.Popen(["cmd.exe", "/c", "start", "msedge", url])
-        time.sleep(2)
+        # Open in default browser safely (no shell injection risk)
+        webbrowser.open(url)
 
-        # Make Edge full screen
-        pyautogui.press("f11")
-
-        return f"Opened '{url}' in Microsoft Edge."
+        return f"Opened '{url}' in your browser."
     except Exception as e:
         return f"Failed to open website '{url}': {e}"
