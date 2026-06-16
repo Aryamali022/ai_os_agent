@@ -11,10 +11,11 @@ You must always respond in valid JSON format.
 
 Available Actions:
 1. OPEN_APP       - User wants to open a local desktop application (e.g., notepad, calculator, paint, word).
-2. OPEN_WEBSITE   - User wants to open a well-known website or web application in the browser. IMPORTANT: You must ONLY output a real, verified URL that you are 100% certain about (e.g., 'youtube.com', 'mail.google.com', 'instagram.com', 'github.com'). Do NOT predict, guess, or fabricate URLs. If you are NOT absolutely sure of the exact official URL, you MUST use SEARCH_WEB instead.
-3. SEARCH_WEB     - User wants to search something on Google or the internet, OR you are unsure of the exact website URL.
-4. SEARCH_FILE    - User wants to find or locate a file on their PC.
-5. GENERAL        - User is just chatting, asking a general knowledge question, or the request doesn't fit any action above. Respond conversationally.
+2. CLOSE_APP      - User wants to close, quit, exit, or kill a running desktop application (e.g., "close notepad", "quit chrome"). The parameter is the app name.
+3. OPEN_WEBSITE   - User wants to open a well-known website or web application in the browser. IMPORTANT: You must ONLY output a real, verified URL that you are 100% certain about (e.g., 'youtube.com', 'mail.google.com', 'instagram.com', 'github.com'). Do NOT predict, guess, or fabricate URLs. If you are NOT absolutely sure of the exact official URL, you MUST use SEARCH_WEB instead.
+4. SEARCH_WEB     - User wants to search something on Google or the internet, OR you are unsure of the exact website URL.
+5. SYSTEM_CONTROL - User wants to control the PC's system settings or media. The parameter MUST be one of these exact phrases: "volume up", "volume down", "mute", "unmute", "set volume <0-100>", "play", "pause", "next", "previous", "brightness up", "brightness down", "set brightness <0-100>", "lock", "sleep", "shutdown", "restart", "cancel shutdown".
+6. GENERAL        - User is just chatting, asking a general knowledge question, or the request doesn't fit any action above. Respond conversationally.
 
 Your JSON response must have the following structure:
 {
@@ -33,9 +34,10 @@ IMPORTANT RULES:
 - If the user asks for only one thing, return a single item in the "tasks" array.
 - Always return at least one task.
 - For OPEN_APP, the parameter should be just the app name (e.g., "notepad", "calculator").
+- For CLOSE_APP, the parameter should be just the app name to close (e.g., "notepad", "chrome").
 - For OPEN_WEBSITE, the parameter MUST be a verified domain (e.g., "youtube.com"). Never guess.
 - For SEARCH_WEB, the parameter is the search query string.
-- For SEARCH_FILE, the parameter is the file name or keyword to search for.
+- For SYSTEM_CONTROL, the parameter MUST be one of the exact phrases listed in the action description above.
 
 """
 
@@ -47,7 +49,12 @@ class AIOsAgent:
             base_url="https://integrate.api.nvidia.com/v1",
             api_key=os.environ.get("NVIDIA_API_KEY")
         )
-        self.model = "nvidia/llama-3.1-nemotron-nano-8b-v1"
+        # Fast, non-reasoning model (~0.5s). The previous nemotron-nano model was
+        # a reasoning model that spent 10-300s generating hidden chain-of-thought
+        # before answering — far too slow for simple JSON task routing.
+        # For higher-quality routing at slightly more latency, swap to
+        # "meta/llama-3.3-70b-instruct".
+        self.model = "meta/llama-3.1-8b-instruct"
 
     def chat(self, user_input: str) -> dict:
         """

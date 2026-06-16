@@ -6,6 +6,17 @@ const welcomeMessage = document.querySelector('.welcome-message');
 // Always point to the FastAPI backend (works from Live Server or any other host)
 const API_BASE = "http://127.0.0.1:5000";
 
+// Icons shown next to each action type in the task result cards
+const ACTION_ICONS = {
+    OPEN_APP: '🖥️',
+    CLOSE_APP: '❌',
+    OPEN_WEBSITE: '🌐',
+    SEARCH_WEB: '🔍',
+    SYSTEM_CONTROL: '🔊',
+    GENERAL: '💬',
+    ERROR: '⚠️',
+};
+
 function sendSuggestion(text) {
     messageInput.value = text;
     messageInput.focus();
@@ -127,7 +138,8 @@ function appendBotResponse(data) {
 
                 const actionSpan = document.createElement('span');
                 actionSpan.className = 'task-action';
-                actionSpan.textContent = task.action.replace(/_/g, ' ');
+                const icon = ACTION_ICONS[task.action] || '⚙️';
+                actionSpan.textContent = `${icon} ${task.action.replace(/_/g, ' ')}`;
 
                 const paramSpan = document.createElement('span');
                 paramSpan.className = 'task-params';

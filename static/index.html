@@ -25,15 +25,16 @@
                     <div class="info-title">Capabilities</div>
                     <ul class="info-list">
                         <li>🖥️ Open Desktop Apps</li>
+                        <li>❌ Close Running Apps</li>
                         <li>🌐 Open Websites</li>
                         <li>🔍 Search the Web</li>
-                        <li>📂 Find Files on PC</li>
+                        <li>🔊 System &amp; Media Control</li>
                         <li>💬 General Chat</li>
                     </ul>
                 </div>
                 <div class="info-card">
                     <div class="info-title">Model</div>
-                    <p class="info-detail">Llama 3.1 Nemotron Nano 8B</p>
+                    <p class="info-detail">Llama 3.1 8B Instruct</p>
                     <p class="info-sub">Powered by Nvidia</p>
                 </div>
                 <div class="info-card">
@@ -71,13 +72,14 @@
                 <div class="welcome-message">
                     <div class="welcome-icon">🤖</div>
                     <h2>Hello! I'm your AI OS Agent.</h2>
-                    <p>I can open apps, browse websites, search the web, find files on your PC, and more. Try one of these:</p>
+                    <p>I can open and close apps, browse websites, search the web, control your system &amp; media, and more. Try one of these:</p>
                     <div class="suggestion-chips">
                         <button class="chip" onclick="sendSuggestion('open notepad')">Open Notepad</button>
+                        <button class="chip" onclick="sendSuggestion('close notepad')">Close Notepad</button>
                         <button class="chip" onclick="sendSuggestion('open youtube')">Open YouTube</button>
                         <button class="chip" onclick="sendSuggestion('search for Python tutorials')">Search Python Tutorials</button>
-                        <button class="chip" onclick="sendSuggestion('find resume file')">Find Resume File</button>
-                        <button class="chip" onclick="sendSuggestion('open notepad and calculator')">Open Multiple Apps</button>
+                        <button class="chip" onclick="sendSuggestion('turn the volume up')">Volume Up</button>
+                        <button class="chip" onclick="sendSuggestion('lock my pc')">Lock PC</button>
                     </div>
                 </div>
             </div>
