@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Agent — AI OS Agent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="page-body">
+    <div class="page-wrap">
+        <header class="page-header">
+            <a class="page-back" href="/">← Back to chat</a>
+        </header>
+
+        <!-- Returning users who already finished setup -->
+        <section id="readyState" class="ba-card hidden">
+            <div class="ba-icon">✅</div>
+            <h1>Browser Agent is ready</h1>
+            <p class="ba-sub">You've already installed the Browser Agent extension.
+                Open it from the side panel in your browser toolbar to start using it.</p>
+            <div class="ba-note">⏳ After you send a task, the Browser Agent can take <strong>5–10 minutes</strong> to start working. Please be patient.</div>
+            <div class="ba-actions">
+                <button class="auth-btn" id="useAgentBtn">How to use it</button>
+                <button class="ghost-btn" id="reinstallBtn">Re-install / view guide</button>
+            </div>
+        </section>
+
+        <!-- First-time setup guide -->
+        <section id="setupState" class="ba-card hidden">
+            <div class="ba-icon">🧩</div>
+            <h1>Set up the Browser Agent</h1>
+            <p class="ba-sub">Download the Browser Agent extension and load it into your browser.
+                Follow the steps below — it only takes a minute.</p>
+
+            <a class="auth-btn download-btn" id="downloadBtn" href="#">⬇ Download Extension (dist.zip)</a>
+
+            <div class="ba-note">⏳ Heads up: after you send a task, the Browser Agent can take <strong>5–10 minutes</strong> to start working. Please be patient.</div>
+
+            <div class="guide">
+                <div class="guide-step">
+                    <h3><span class="step-num">1</span> Download and extract the extension</h3>
+                    <ul>
+                        <li>Download the <code>dist.zip</code> file using the button above.</li>
+                        <li>Right-click it → <strong>Extract All…</strong> → <strong>Extract</strong> (or use any unzip tool).</li>
+                        <li>Open the extracted folder. You should see files like <code>manifest.json</code>, <code>background.js</code>, and <code>sidepanel.js</code> directly inside it.</li>
+                    </ul>
+                    <div class="guide-warn">⚠️ <strong>Important:</strong> the folder you select in Step 4 must be the one that contains <code>manifest.json</code> directly. If you opened the folder and see only another folder inside, go one level deeper until you see <code>manifest.json</code>.</div>
+                </div>
+
+                <div class="guide-step">
+                    <h3><span class="step-num">2</span> Open the Extensions page</h3>
+                    <p>In your browser's address bar, type the matching address and press Enter:</p>
+                    <table class="guide-table">
+                        <thead><tr><th>Browser</th><th>Address</th></tr></thead>
+                        <tbody>
+                            <tr><td>Chrome</td><td><code>chrome://extensions</code></td></tr>
+                            <tr><td>Edge</td><td><code>edge://extensions</code></td></tr>
+                            <tr><td>Brave</td><td><code>brave://extensions</code></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="guide-step">
+                    <h3><span class="step-num">3</span> Turn on Developer mode</h3>
+                    <p>Flip the <strong>Developer mode</strong> toggle to <strong>ON</strong> (top-right of the Extensions page).</p>
+                </div>
+
+                <div class="guide-step">
+                    <h3><span class="step-num">4</span> Load the extension</h3>
+                    <ul>
+                        <li>Click <strong>Load unpacked</strong>.</li>
+                        <li>Select the extracted folder (the one containing <code>manifest.json</code>) and confirm.</li>
+                        <li><strong>Browser Agent</strong> now appears in your list of extensions. ✅</li>
+                    </ul>
+                </div>
+
+                <div class="guide-step">
+                    <h3><span class="step-num">5</span> Pin it and start using it</h3>
+                    <ul>
+                        <li>Click the puzzle-piece 🧩 icon in the toolbar and <strong>pin</strong> Browser Agent for easy access.</li>
+                        <li>Click the Browser Agent icon to open the <strong>side panel</strong>.</li>
+                        <li>Wait for the panel to show <strong>Connected</strong>.</li>
+                        <li>Type a task and send it.</li>
+                    </ul>
+                    <p class="guide-tip">Watch the agent work through the page step by step. It acts on the tab that's currently in focus, so keep the right tab active.</p>
+                </div>
+            </div>
+
+            <button class="auth-btn" id="doneBtn">I've installed it — finish setup</button>
+        </section>
+    </div>
+
+    <script src="/static/browser-agent.js"></script>
+</body>
+</html>

@@ -12,6 +12,8 @@ from agent import AIOsAgent
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
+# Pre-built browser extension archive served on the Browser Agent page.
+EXTENSION_ZIP = BASE_DIR / "downloads" / "dist.zip"
 
 # Load environment variables
 load_dotenv()
@@ -56,6 +58,18 @@ class ChatResponse(BaseModel):
 
 # --- API Routes (defined BEFORE static mount) ---
 
+@app.get("/download/browser-agent")
+def download_browser_agent():
+    """Serve the pre-built browser extension archive (dist.zip)."""
+    if not EXTENSION_ZIP.exists():
+        raise HTTPException(status_code=404, detail="Browser agent file not found.")
+
+    return FileResponse(
+        str(EXTENSION_ZIP),
+        media_type="application/zip",
+        filename="dist.zip",
+    )
+
 @app.post("/chat", response_model=ChatResponse)
 def chat_endpoint(request: ChatRequest):
     """
@@ -79,6 +93,11 @@ async def health_check():
 async def serve_frontend():
     """Serve the frontend chat interface."""
     return FileResponse(str(STATIC_DIR / "index.html"))
+
+@app.get("/browser-agent")
+async def serve_browser_agent():
+    """Serve the Browser Agent setup / guide page."""
+    return FileResponse(str(STATIC_DIR / "browser-agent.html"))
 
 # Mount static files at /static for CSS, JS, images etc.
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
